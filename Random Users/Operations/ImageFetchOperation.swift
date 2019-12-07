@@ -9,12 +9,13 @@
 import Foundation
 
 class ImageFetchOperation: ConcurrentOperation {
-    var imageInfo: RandomUser.ImageInfo
+    
+    // MARK: - Properties
+    
+    var imageInfo: UserImageInfo
     var forFullImage: Bool = false
     
     var imageData: Data?
-    
-    lazy private var lock = NSLock()
     
     private var url: URL? {
         return forFullImage ? imageInfo.fullImageURL : imageInfo.thumbnailURL
@@ -28,10 +29,14 @@ class ImageFetchOperation: ConcurrentOperation {
         return task
     }()
     
-    init(_ imageInfo: RandomUser.ImageInfo, forFullImage: Bool = false) {
+    // MARK: - Init
+    
+    init(_ imageInfo: UserImageInfo, forFullImage: Bool = false) {
         self.imageInfo = imageInfo
         self.forFullImage = forFullImage
     }
+    
+    // MARK: - Methods
     
     override func start() {
         state = .isExecuting

@@ -9,9 +9,12 @@
 import Foundation
 
 class APIController {
-    let baseURL = URL(string: "https://randomuser.me/api/")!
-    let defaultQuery = "?format=json&inc=name,email,phone,picture&results=1000"
-    lazy var defaultURL: URL = {
+    // MARK: - Properties
+    
+    typealias FetchTaskCompletionHandler = (Result<UserController, Error>) -> ()
+    
+    private let baseURL = URL(string: "https://randomuser.me/api/")!
+    private lazy var defaultURL: URL = {
         var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
         components?.queryItems = [
             URLQueryItem(name: "format", value: "json"),
@@ -21,40 +24,48 @@ class APIController {
         return components?.url ?? baseURL
     }()
     
-    func fetchUsers(completion: @escaping (Result<[RandomUser], Error>) -> ()) {
+    private weak var fetchTask: URLSessionDataTask?
+    private var fetchCompletion: FetchTaskCompletionHandler?
+
+    // MARK: - Fetch Methods
+    
+    func fetchUsers(completion: @escaping FetchTaskCompletionHandler) {
         var request = URLRequest(url: defaultURL)
-        print(defaultURL)
         request.httpMethod = "GET"
         
-        let dataTask = URLSession.shared.dataTask(with: request) {
-            data, response, error in
-            
-            if let error = error {
-                print("ERROR FETCHING USERS\nERROR:\n\(error)")
-                if let response = response {
-                    print("RESPONSE:\n\(response)")
-                }
-                completion(.failure(error))
-                return
+        fetchCompletion = completion
+        
+        fetchTask = URLSession.shared.dataTask(
+            with: request,
+            completionHandler: fetchTaskDidFinish(with:_:_:))
+        fetchTask?.resume()
+    }
+    
+    private func fetchTaskDidFinish(with data: Data?, _ response: URLResponse?, _ error: Error?) {
+        if let error = error {
+            print("ERROR FETCHING USERS\nERROR:\n\(error)")
+            if let response = response {
+                print("RESPONSE:\n\(response)")
             }
-            
-            guard let data = data else {
-                print("ERROR FETCHING USERS\nNO DATA")
-                completion(.failure(NSError()))
-                return
-            }
-            
-            do {
-                let results = try JSONDecoder().decode(RandomUserAPIResults.self, from: data)
-                completion(.success(results.users))
-            } catch {
-                print("ERROR DECODING FETCHED USERS\nERROR:\n\(error)")
-                if let rawData = String(data: data, encoding: .utf8) {
-                    print("DATA:\n\(rawData)")
-                }
-                completion(.failure(error))
-            }
+            fetchCompletion?(.failure(error))
+            return
         }
-        dataTask.resume()
+        
+        guard let data = data else {
+            print("ERROR FETCHING USERS\nNO DATA")
+            fetchCompletion?(.failure(NSError()))
+            return
+        }
+        
+        do {
+            let userController = try JSONDecoder().decode(UserController.self, from: data)
+            fetchCompletion?(.success(userController))
+        } catch {
+            print("ERROR DECODING FETCHED USERS\nERROR:\n\(error)")
+            if let rawData = String(data: data, encoding: .utf8) {
+                print("DATA:\n\(rawData)")
+            }
+            fetchCompletion?(.failure(error))
+        }
     }
 }

@@ -9,8 +9,7 @@
 import UIKit
 
 class UserTableViewCell: UITableViewCell {
-    
-    weak var user: RandomUser? {
+    weak var user: User? {
         didSet {
             userNameLabel.text = user?.name
         }
@@ -18,4 +17,9 @@ class UserTableViewCell: UITableViewCell {
     
     @IBOutlet weak var userImageView: UIImageView!
     @IBOutlet weak var userNameLabel: UILabel!
+    
+    override func prepareForReuse() {
+        userImageView.image = nil
+        super.prepareForReuse()
+    }
 }
